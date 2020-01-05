@@ -1,5 +1,4 @@
 # dietr
 
-This is a repo to test out a diet and exercise planning shiny app. 
+This is a shiny app for exploring intermittent energy restriction patterns. 
 
-Test 2. 
