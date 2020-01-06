@@ -16,7 +16,11 @@ library(scales)
 # ui ----
 ui <- dashboardPage(
   
-  dashboardHeader(title = "Data Science Diet"),
+  dashboardHeader(title = "Beta Data Science Diet v0.01",
+                  dropdownMenu(type = "message", 
+                               badgeStatus = "success",
+                               messageItem("Support Team",
+                                           "T.J.A.B!"))),
   
   dashboardSidebar(
     numericInput("bw", label = h3("Weight (lbs)"), value = 183),
@@ -73,9 +77,7 @@ ui <- dashboardPage(
           width = 12,
           plotOutput('weekplot'))),
     hr(),
-    fluidRow(box(title = "3 month projection",
-                 width = 12,
-                 plotlyOutput('monthsplot')))
+    h3("TODO 3 month projection")
   )
 )
 
@@ -196,7 +198,7 @@ server <- function(input, output, session){
   
   output$weekplot <- renderPlot({print(wk_days_plot())})
   
-  output$monthsplot <- renderPlotly({print(random_ggplotly(type = "line"))})
+  #output$monthsplot <- renderPlotly({print(random_ggplotly(type = "line"))})
   
 }
 
