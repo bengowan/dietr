@@ -1,0 +1,12 @@
+name: DataScienceDiet_beta
+title: DataScienceDiet_beta
+username:
+account: benjamin-gowan
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1629122
+bundleId: 2708711
+url: https://benjamin-gowan.shinyapps.io/DataScienceDiet_beta/
+when: 1578292617.36211
+asMultiple: FALSE
+asStatic: FALSE
