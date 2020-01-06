@@ -62,7 +62,7 @@ ui <- dashboardPage(
       infoBoxOutput('fm'),
     ),
     hr(),
-    fluidRow(infoBox("Weekly Deficit", -500), icon = icon("balance-scale-left"),
+    fluidRow(infoBoxOutput('wk_def'),
              infoBox("Weekly Lean Change (lbs)", 0.1, icon = icon("balance-scale-right"), color = 'green'),
              infoBox("Weekly Fat Change (lbs)", -0.5, icon = icon("balance-scale-left"), color = 'yellow'),),
     hr(),
@@ -82,16 +82,19 @@ ui <- dashboardPage(
 # server ----
 server <- function(input, output, session){
   
-  #TDEE
+  tdee_rx <- reactive({round((66 + 13.7*(input$bw/2.2) + 5 * 2.5 * input$ht - 6.8 *33)*1.4)})
+  
+  #TDEE srv ----
   output$tdee <- renderInfoBox({
     infoBox(
     title = "TDEE",
     subtitle = "Typical Daily Calories",
-    round((66 + 13.7*(input$bw/2.2) + 5 * 2.5 * input$ht - 6.8 *33)*1.4),
+    tdee_rx(),
     icon = icon("fire"), 
     color = 'red')})
   
-  #Lean Mass
+  
+  #Lean Mass srv ----
   output$lm <- renderInfoBox({
     infoBox("Lean Mass (lbs)", 
             round(input$bw*(1-input$bfp)),
@@ -100,7 +103,7 @@ server <- function(input, output, session){
   })
   
   
-  #Fat Mass
+  #Fat Mass ----
   output$fm <- renderInfoBox({
     infoBox("Fat Mass (lbs)", 
             round(input$bw*input$bfp),
@@ -108,6 +111,17 @@ server <- function(input, output, session){
             color = 'yellow')
   })
 
+  # Weekly deficit
+  
+  output$wk_def <- renderInfoBox({
+    
+    infoBox(
+      title = "Weekly Deficit", 
+      , 
+      icon = icon("balance-scale-left"))
+    
+  })
+  
   
   
   
