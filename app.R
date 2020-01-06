@@ -19,8 +19,8 @@ ui <- dashboardPage(
   dashboardHeader(title = "Data Science Diet"),
   
   dashboardSidebar(
-    numericInput("weight", label = h3("Weight (lbs)"), value = 185),
-    
+    numericInput("bw", label = h3("Weight (lbs)"), value = 183),
+    numericInput("ht", label = h3("Height (in)"), value = 68),
     numericInput("bfp", label = h3("Body Fat (%)"), value = 0.235),
     
     #deficit day select
@@ -57,9 +57,9 @@ ui <- dashboardPage(
   ),
   dashboardBody(
     fluidRow(
-      infoBox("TDEE (kCals)", 2300, icon = icon("fire"), color = 'red'),
-      infoBox("Lean Mass (lbs)", 140.8, icon = icon("dumbbell"), color = 'green'),
-      infoBox("Fat Mass (lbs)", 42.2, icon = icon("cookie-bite"), color = 'yellow'),
+      infoBoxOutput('tdee'),
+      infoBoxOutput('lm'),
+      infoBoxOutput('fm'),
     ),
     hr(),
     fluidRow(infoBox("Weekly Deficit", -500), icon = icon("balance-scale-left"),
@@ -81,6 +81,35 @@ ui <- dashboardPage(
 
 # server ----
 server <- function(input, output, session){
+  
+  #TDEE
+  output$tdee <- renderInfoBox({
+    infoBox(
+    title = "TDEE",
+    subtitle = "Typical Daily Calories",
+    round((66 + 13.7*(input$bw/2.2) + 5 * 2.5 * input$ht - 6.8 *33)*1.4),
+    icon = icon("fire"), 
+    color = 'red')})
+  
+  #Lean Mass
+  output$lm <- renderInfoBox({
+    infoBox("Lean Mass (lbs)", 
+            round(input$bw*(1-input$bfp)),
+            icon = icon("dumbbell"), 
+            color = 'green')
+  })
+  
+  
+  #Fat Mass
+  output$fm <- renderInfoBox({
+    infoBox("Fat Mass (lbs)", 
+            round(input$bw*input$bfp),
+            icon = icon("cookie-bite"), 
+            color = 'yellow')
+  })
+
+  
+  
   
   output$weekplot <- renderPlotly({print(random_ggplotly(type = "bar"))})
   
