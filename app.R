@@ -8,7 +8,7 @@ library(shiny)
 library(shinydashboard)
 library(shinipsum)
 library(plotly)
-
+library(scales)
 
 # gobal ----
 
@@ -24,7 +24,7 @@ ui <- dashboardPage(
     numericInput("bfp", label = h3("Body Fat (%)"), value = 0.235),
     
     #deficit day select
-    checkboxGroupInput("d_days", 
+    checkboxGroupInput("def_days", 
                        label = h3("Deficit Days"), 
                        choices = list("Sunday"    = "sun", 
                                       "Monday"    = "mon", 
@@ -36,7 +36,7 @@ ui <- dashboardPage(
                        selected = c("mon","wed")),
     
     #deficit day cals ---- 
-    numericInput("deficit_cal", label = h3("Deficit Day Calories"), value = 1200),
+    numericInput("def_cal", label = h3("Deficit Day Calories"), value = 1200),
     
     #exercise day select
     checkboxGroupInput("ex_days", 
@@ -51,25 +51,27 @@ ui <- dashboardPage(
                        selected = c("tue","thu", "sat")),
     
     #exercise day cals ---- 
-    numericInput("deficit_cal", label = h3("Exercise Day Calories"), value = 2600)
+    numericInput("ex_cal", label = h3("Exercise Day Calories"), value = 2600)
     
     
   ),
   dashboardBody(
+    h3("Starting Composition"),
     fluidRow(
       infoBoxOutput('tdee'),
       infoBoxOutput('lm'),
       infoBoxOutput('fm'),
     ),
     hr(),
+    h3("Weekly Changes"),
     fluidRow(infoBoxOutput('wk_def'),
-             infoBox("Weekly Lean Change (lbs)", 0.1, icon = icon("balance-scale-right"), color = 'green'),
-             infoBox("Weekly Fat Change (lbs)", -0.5, icon = icon("balance-scale-left"), color = 'yellow'),),
+             infoBoxOutput('wk_lean_chg'),
+             infoBoxOutput('wk_fat_chg')),
     hr(),
     fluidRow(
       box(title = "Weekly Pattern",
           width = 12,
-          plotlyOutput('weekplot'))),
+          plotOutput('weekplot'))),
     hr(),
     fluidRow(box(title = "3 month projection",
                  width = 12,
@@ -84,12 +86,61 @@ server <- function(input, output, session){
   
   tdee_rx <- reactive({round((66 + 13.7*(input$bw/2.2) + 5 * 2.5 * input$ht - 6.8 *33)*1.4)})
   
+  week_net <- reactive({
+    tdee_rx()*7 - (length(input$def_days)*input$def_cal + 
+                   length(input$ex_days)*input$ex_cal + 
+                   7-length(c(input$def_days, input$ex_days)) * tdee_rx())
+  })
+  
+  
+  surpluses <- reactive({(input$ex_cal - tdee_rx())/700 * length(input$ex_days)})
+  
+  deficits <- reactive({(input$def_cal - tdee_rx())/3500 * length(input$def_days)})
+  
+  lean_net <- reactive({
+    surpluses() * 0.75 + deficits() * 0.25
+  })
+  
+  fat_net <- reactive({
+    deficits() * 0.75 + surpluses() * 0.25
+  })
+  
+  
+  wk_days_plot <- reactive({
+    
+    c("sun", "mon", "tue", "wed", "thu", "fri", "sat") %>% 
+    enframe() %>% 
+    mutate(day_type = case_when(
+      value %in% input$def_days ~ "Low",
+      value %in% input$ex_days ~ "Extra",
+      TRUE ~ "Normal"),
+      cals = case_when(
+        day_type == "Low" ~ round(input$def_cal),
+        day_type == "Extra" ~ round(input$ex_cal),
+        TRUE ~ round(tdee_rx())),
+      day = fct_reorder(value, name)) %>% 
+      ggplot(aes(x = day,
+                 y = cals,
+                 fill = day_type)) +
+      geom_col() +
+      theme_minimal() +
+      expand_limits(y = 1.2 * tdee_rx()) +
+      labs(x = "Day",
+           y = "Calories",
+           fill = "Day Calories",
+           caption = "Rough calculations and chart")
+  
+  })
+    
+    
+  #energy content of weight change (kcal/kg) = 1020 (ΔFFM/ΔW) + 9500 (1 - ΔFFM/ΔW)
+  
   #TDEE srv ----
   output$tdee <- renderInfoBox({
     infoBox(
     title = "TDEE",
-    subtitle = "Typical Daily Calories",
-    tdee_rx(),
+    subtitle = "Daily kCals",
+    value = tdee_rx(),
     icon = icon("fire"), 
     color = 'red')})
   
@@ -111,21 +162,39 @@ server <- function(input, output, session){
             color = 'yellow')
   })
 
-  # Weekly deficit
-  
+  # Weekly deficit ----
   output$wk_def <- renderInfoBox({
     
     infoBox(
-      title = "Weekly Deficit", 
-      , 
-      icon = icon("balance-scale-left"))
+      title = "Weight Change", 
+      value = round(lean_net() + fat_net(), digits = 1),
+      icon  = icon("balance-scale-left"))
+  })
+  
+  
+  # Weekly Lean change ---- 
+  output$wk_lean_chg <- renderInfoBox({
+    infoBox(
+      title = "Lean Change (lbs)", 
+      value = round(lean_net(), digits = 1), 
+      icon  = icon("balance-scale-right"), 
+      color = 'green')
+  })
+
+  
     
+  # Weekly Fat change ----
+  
+  output$wk_fat_chg <- renderInfoBox({
+    infoBox(title = "Fat Change (lbs)",
+            value = round(fat_net(), digits = 1), 
+            icon  = icon("balance-scale-left"), 
+            color = 'yellow')
   })
   
   
   
-  
-  output$weekplot <- renderPlotly({print(random_ggplotly(type = "bar"))})
+  output$weekplot <- renderPlot({print(wk_days_plot())})
   
   output$monthsplot <- renderPlotly({print(random_ggplotly(type = "line"))})
   
