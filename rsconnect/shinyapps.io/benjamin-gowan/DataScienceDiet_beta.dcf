@@ -5,8 +5,8 @@ account: benjamin-gowan
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 1629122
-bundleId: 2708711
+bundleId: 2724424
 url: https://benjamin-gowan.shinyapps.io/DataScienceDiet_beta/
-when: 1578292617.36211
+when: 1578891162.98771
 asMultiple: FALSE
 asStatic: FALSE

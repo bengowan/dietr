@@ -8,15 +8,15 @@ library(glue)
 library(shiny)
 library(shinydashboard)
 library(scales)
-library(hrbrthemes)
+library(ggthemes)
 
 # gobal ----
-import_roboto_condensed()
+
 
 # ui ----
 ui <- dashboardPage(
   
-  dashboardHeader(title = "Beta Data Science Diet v0.01",
+  dashboardHeader(title = "Beta Data Science Diet v0.02",
                   dropdownMenu(type = "message", 
                                badgeStatus = "success",
                                messageItem("Support Team",
@@ -69,14 +69,14 @@ ui <- dashboardPage(
     
   ),
   dashboardBody(
-    h3("Starting Composition"),
+    h3("Starting Metrics"),
     fluidRow(
       infoBoxOutput('tdee'),
       infoBoxOutput('lm'),
       infoBoxOutput('fm'),
     ),
     hr(),
-    h3("Goal Composition"),
+    h3("Goal Metrics"),
     fluidRow(
       infoBoxOutput('goal_tdee'),
       infoBoxOutput('goal_lm'),
@@ -93,11 +93,11 @@ ui <- dashboardPage(
     valueBox("TODO Lean Chg wks", 
              subtitle = "or warn if won't achieve", 
              color = 'green',
-             icon = icon("dumbell")),
+             icon = icon("dumbbell")),
     valueBox("TODO Fat Chg wks", 
              subtitle = "or warn if won't achieve", 
              color = 'yellow',
-             icon = icon("cookie"))),
+             icon = icon("cookie-bite"))),
     hr(),
     fluidRow(
       box(title = "Weekly Pattern",
@@ -153,8 +153,8 @@ server <- function(input, output, session){
                  y = cals,
                  fill = day_type)) +
       geom_col() +
-      theme_ipsum_rc() +
-      scale_fill_ipsum() +
+      theme_few() +
+      scale_fill_few() +
       expand_limits(y = 1.2 * tdee_rx()) +
       labs(title = "Weekly Calories Pattern",
            subtitle = "draft holder, want to pick consistent theme/colors",
@@ -241,7 +241,7 @@ server <- function(input, output, session){
     infoBox(
       title = "Lean Change (lbs)", 
       value = round(lean_net(), digits = 1), 
-      icon  = icon("dumbell"), 
+      icon  = icon("dumbbell"), 
       color = 'green')
   })
 
@@ -270,7 +270,7 @@ server <- function(input, output, session){
   
   proj_df <- reactive({
     tibble(week = 1:(bw_weeks_proj()),
-           bw0   = input$bw) %>% 
+           bw   = input$bw) %>% 
       mutate(new_bw = bw + week*bw_chg(),
              new_bw = round(new_bw, digits = 1))
   })
@@ -283,7 +283,7 @@ server <- function(input, output, session){
                  y = new_bw)) +
       geom_col(fill = "lightblue") +
       geom_text(aes(label = new_bw), vjust = 1) +
-      theme_ipsum_rc() +
+      theme_few() +
       expand_limits(y = 0) +
       labs(title = "Projected Changes",
            subtitle = "TODO: Separate Lean / Fat Mass fill",
