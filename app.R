@@ -4,14 +4,14 @@
 #libraries
 
 library(tidyverse)
+library(glue)
 library(shiny)
 library(shinydashboard)
-library(shinipsum)
-library(plotly)
 library(scales)
+library(hrbrthemes)
 
 # gobal ----
-
+import_roboto_condensed()
 
 # ui ----
 ui <- dashboardPage(
@@ -23,13 +23,21 @@ ui <- dashboardPage(
                                            "T.J.A.B!"))),
   
   dashboardSidebar(
-    numericInput("bw", label = h3("Weight (lbs)"), value = 183),
-    numericInput("ht", label = h3("Height (in)"), value = 68),
-    numericInput("bfp", label = h3("Body Fat (%)"), value = 0.235),
+  
+    #Current Metrics
+    h3("Starting Metrics"),
+    numericInput("ht", label = h4("Height (in)"), value = 68),
+    numericInput("bw", label = h4("Weight (lbs)"), value = 183),
+    numericInput("bfp", label = h4("Body Fat (%)"), value = 0.235),
+    
+    #Goal Metrics
+    h3("Goal Metrics"),
+    numericInput("goal_bw", label = h4("Goal Weight (lbs)"), value = 175),
+    numericInput("goal_bfp", label = h4("Goal Body Fat (%)"), value = 0.2),
     
     #deficit day select
     checkboxGroupInput("def_days", 
-                       label = h3("Deficit Days"), 
+                       label = h4("Deficit Days"), 
                        choices = list("Sunday"    = "sun", 
                                       "Monday"    = "mon", 
                                       "Tuesday"   = "tue",
@@ -40,11 +48,11 @@ ui <- dashboardPage(
                        selected = c("mon","wed")),
     
     #deficit day cals ---- 
-    numericInput("def_cal", label = h3("Deficit Day Calories"), value = 1200),
+    numericInput("def_cal", label = h4("Deficit Day Intake Calories"), value = 1200),
     
     #exercise day select
     checkboxGroupInput("ex_days", 
-                       label = h3("Exercise Days"), 
+                       label = h4("Exercise Days"), 
                        choices = list("Sunday"    = "sun", 
                                       "Monday"    = "mon", 
                                       "Tuesday"   = "tue",
@@ -55,7 +63,8 @@ ui <- dashboardPage(
                        selected = c("tue","thu", "sat")),
     
     #exercise day cals ---- 
-    numericInput("ex_cal", label = h3("Exercise Day Calories"), value = 2600)
+    numericInput("ex_cal", label = h4("Exercise Day Intake Calories"), value = 2600)
+    #numericInput("ex_out_cal", label = h3("Exercise Day Extra Burn Calories"), value = 300)
     
     
   ),
@@ -67,18 +76,39 @@ ui <- dashboardPage(
       infoBoxOutput('fm'),
     ),
     hr(),
+    h3("Goal Composition"),
+    fluidRow(
+      infoBoxOutput('goal_tdee'),
+      infoBoxOutput('goal_lm'),
+      infoBoxOutput('goal_fm'),
+    ),
+    hr(),
     h3("Weekly Changes"),
     fluidRow(infoBoxOutput('wk_def'),
              infoBoxOutput('wk_lean_chg'),
              infoBoxOutput('wk_fat_chg')),
     hr(),
     fluidRow(
+    valueBoxOutput("proj_box"),
+    valueBox("TODO Lean Chg wks", 
+             subtitle = "or warn if won't achieve", 
+             color = 'green',
+             icon = icon("dumbell")),
+    valueBox("TODO Fat Chg wks", 
+             subtitle = "or warn if won't achieve", 
+             color = 'yellow',
+             icon = icon("cookie"))),
+    hr(),
+    fluidRow(
       box(title = "Weekly Pattern",
           width = 12,
           plotOutput('weekplot'))),
     hr(),
-    h3("TODO 3 month projection")
-  )
+    fluidRow(
+      box(title = "Projection",
+          width = 12,
+          plotOutput('proj_plot')))
+ )
 )
 
 
@@ -88,6 +118,10 @@ server <- function(input, output, session){
   
   tdee_rx <- reactive({round((66 + 13.7*(input$bw/2.2) + 5 * 2.5 * input$ht - 6.8 *33)*1.4)})
   
+  goal_tdee_rx <- reactive({
+    round((66 + 13.7*(input$goal_bw/2.2) + 5 * 2.5 * input$ht - 6.8 *33)*1.4)
+  })
+  
   week_net <- reactive({
     tdee_rx()*7 - (length(input$def_days)*input$def_cal + 
                    length(input$ex_days)*input$ex_cal + 
@@ -96,18 +130,12 @@ server <- function(input, output, session){
   
   
   surpluses <- reactive({(input$ex_cal - tdee_rx())/700 * length(input$ex_days)})
-  
   deficits <- reactive({(input$def_cal - tdee_rx())/3500 * length(input$def_days)})
   
-  lean_net <- reactive({
-    surpluses() * 0.75 + deficits() * 0.25
-  })
+  lean_net <- reactive({surpluses() * 0.75 + deficits() * 0.25})
+  fat_net <- reactive({deficits() * 0.75 + surpluses() * 0.25})
   
-  fat_net <- reactive({
-    deficits() * 0.75 + surpluses() * 0.25
-  })
-  
-  
+  # weekly plot
   wk_days_plot <- reactive({
     
     c("sun", "mon", "tue", "wed", "thu", "fri", "sat") %>% 
@@ -125,9 +153,12 @@ server <- function(input, output, session){
                  y = cals,
                  fill = day_type)) +
       geom_col() +
-      theme_minimal() +
+      theme_ipsum_rc() +
+      scale_fill_ipsum() +
       expand_limits(y = 1.2 * tdee_rx()) +
-      labs(x = "Day",
+      labs(title = "Weekly Calories Pattern",
+           subtitle = "draft holder, want to pick consistent theme/colors",
+           x = "Day",
            y = "Calories",
            fill = "Day Calories",
            caption = "Rough calculations and chart")
@@ -137,6 +168,7 @@ server <- function(input, output, session){
     
   #energy content of weight change (kcal/kg) = 1020 (ΔFFM/ΔW) + 9500 (1 - ΔFFM/ΔW)
   
+  #Baseline composition plots ----
   #TDEE srv ----
   output$tdee <- renderInfoBox({
     infoBox(
@@ -164,6 +196,36 @@ server <- function(input, output, session){
             color = 'yellow')
   })
 
+  # Goal Composition Outputs
+  #TDEE srv ----
+  output$goal_tdee <- renderInfoBox({
+    infoBox(
+      title = "Goal TDEE",
+      subtitle = "Daily kCals",
+      value = goal_tdee_rx(),
+      icon = icon("fire"), 
+      color = 'red')})
+  
+  
+  #Lean Mass srv ----
+  output$goal_lm <- renderInfoBox({
+    infoBox("Goal Lean Mass (lbs)", 
+            round(input$goal_bw*(1-input$goal_bfp)),
+            icon = icon("dumbbell"), 
+            color = 'green')
+  })
+  
+  
+  #Fat Mass ----
+  output$goal_fm <- renderInfoBox({
+    infoBox("Goal Fat Mass (lbs)", 
+            round(input$goal_bw*input$goal_bfp),
+            icon = icon("cookie-bite"), 
+            color = 'yellow')
+  })
+  
+  
+  
   # Weekly deficit ----
   output$wk_def <- renderInfoBox({
     
@@ -179,7 +241,7 @@ server <- function(input, output, session){
     infoBox(
       title = "Lean Change (lbs)", 
       value = round(lean_net(), digits = 1), 
-      icon  = icon("balance-scale-right"), 
+      icon  = icon("dumbell"), 
       color = 'green')
   })
 
@@ -190,7 +252,7 @@ server <- function(input, output, session){
   output$wk_fat_chg <- renderInfoBox({
     infoBox(title = "Fat Change (lbs)",
             value = round(fat_net(), digits = 1), 
-            icon  = icon("balance-scale-left"), 
+            icon  = icon("cookie"), 
             color = 'yellow')
   })
   
@@ -198,7 +260,49 @@ server <- function(input, output, session){
   
   output$weekplot <- renderPlot({print(wk_days_plot())})
   
-  #output$monthsplot <- renderPlotly({print(random_ggplotly(type = "line"))})
+  
+  # projection
+  
+  bw_chg <- reactive({lean_net() + fat_net()})
+  
+  bw_weeks_proj <- reactive({ceiling((input$bw - input$goal_bw)/-bw_chg())})
+  
+  
+  proj_df <- reactive({
+    tibble(week = 1:(bw_weeks_proj()),
+           bw0   = input$bw) %>% 
+      mutate(new_bw = bw + week*bw_chg(),
+             new_bw = round(new_bw, digits = 1))
+  })
+  
+  
+  proj_plot <- reactive({
+    
+    proj_df() %>% 
+      ggplot(aes(x = as.factor(week),
+                 y = new_bw)) +
+      geom_col(fill = "lightblue") +
+      geom_text(aes(label = new_bw), vjust = 1) +
+      theme_ipsum_rc() +
+      expand_limits(y = 0) +
+      labs(title = "Projected Changes",
+           subtitle = "TODO: Separate Lean / Fat Mass fill",
+           caption = "Reference Kevin Hall modeling study")
+    
+  })
+  
+  output$proj_box <- renderValueBox({
+    valueBox(
+    value = glue("{bw_weeks_proj()} weeks"),
+    subtitle = "to reach goal body weight", 
+    color = 'aqua',
+    icon = icon("weight"))
+  })
+  
+  
+  
+  output$proj_plot <- renderPlot({print(proj_plot())})
+  
   
 }
 
