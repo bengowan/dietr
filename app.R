@@ -90,10 +90,7 @@ ui <- dashboardPage(
     hr(),
     fluidRow(
     valueBoxOutput("proj_box"),
-    valueBox("TODO Lean Chg wks", 
-             subtitle = "or warn if won't achieve", 
-             color = 'green',
-             icon = icon("dumbbell")),
+    valueBoxOutput('proj_lean'),
     valueBox("TODO Fat Chg wks", 
              subtitle = "or warn if won't achieve", 
              color = 'yellow',
@@ -157,7 +154,7 @@ server <- function(input, output, session){
       scale_fill_few() +
       expand_limits(y = 1.2 * tdee_rx()) +
       labs(title = "Weekly Calories Pattern",
-           subtitle = "draft holder, want to pick consistent theme/colors",
+           subtitle = "draft",
            x = "Day",
            y = "Calories",
            fill = "Day Calories",
@@ -267,6 +264,12 @@ server <- function(input, output, session){
   
   bw_weeks_proj <- reactive({ceiling((input$bw - input$goal_bw)/-bw_chg())})
   
+  lean_weeks_proj <- reactive({
+    
+    (round(input$bw*(1-input$bfp)) - round(input$goal_bw*(1-input$goal_bfp))) / lean_net()
+    
+    
+    })
   
   proj_df <- reactive({
     tibble(week = 1:(bw_weeks_proj()),
@@ -297,6 +300,16 @@ server <- function(input, output, session){
     subtitle = "to reach goal body weight", 
     color = 'aqua',
     icon = icon("weight"))
+  })
+  
+  
+  output$proj_lean <- renderValueBox({
+    valueBox(value = glue("{lean_weeks_proj()} weeks"),
+             subtitle = "to reach goal lean lbs",
+             color = 'green',
+             icon = icon("dumbbell"))
+    
+    
   })
   
   
